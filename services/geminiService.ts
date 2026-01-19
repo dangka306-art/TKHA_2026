@@ -6,7 +6,7 @@ export const generateTopicData = async (subject: Subject, topic: string): Promis
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("API Key missing");
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   
   // Tăng cường chỉ thị về tính đa dạng và số lượng chính xác
   const prompt = `
