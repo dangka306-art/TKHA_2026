@@ -1,55 +1,76 @@
 
 import React, { useState } from 'react';
+import { Subject } from '../types';
 
-interface Props {
-  onUnlock: () => void;
+interface Props { 
+  subject: Subject; 
+  onUnlock: () => void; 
+  onBack: () => void;
 }
 
-const LicenseGate: React.FC<Props> = ({ onUnlock }) => {
+const ACCESS_CODES: Record<string, string> = {
+  'Toán học': 'TOAN26',
+  'Ngữ văn': 'VAN26',
+  'Tiếng anh': 'ANH26',
+  'Vật lý': 'LY26',
+  'Hóa học': 'HOA26',
+  'Sinh học': 'SINH26',
+  'Lịch sử': 'SU26',
+  'Địa lý': 'DIA26',
+  'Giáo dục kinh tế và pháp luật': 'KTPL26',
+  'Hoạt động trải nghiệm hướng nghiệp': 'TN26',
+  'Tin học': 'TIN26',
+};
+
+const LicenseGate: React.FC<Props> = ({ subject, onUnlock, onBack }) => {
   const [key, setKey] = useState('');
   const [error, setError] = useState('');
 
   const handleUnlock = () => {
-    // Basic license control
-    if (key.trim().toUpperCase() === 'TKHA-2026-VIP') {
+    const inputKey = key.trim().toUpperCase();
+    const correctKey = ACCESS_CODES[subject];
+    
+    if (inputKey === correctKey || inputKey === 'TKHA-VIP-2026') {
       onUnlock();
     } else {
-      setError('Mã bản quyền không đúng! Vui lòng liên hệ quản trị viên.');
+      setError(`Mã truy cập môn ${subject} không đúng!`);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border-t-8 border-green-500">
-        <h1 className="text-3xl font-bold text-center mb-2 text-green-700">TKHA_2026</h1>
-        <p className="text-center text-gray-500 mb-8">Ứng dụng rèn luyện tư duy 2018</p>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <div className="bg-white p-10 rounded-[40px] shadow-2xl w-full max-w-md border-t-[12px] border-green-500 text-center animate-in zoom-in duration-300">
+        <div className="text-6xl mb-6">🔒</div>
+        <h2 className="text-2xl font-black text-gray-800 mb-2 uppercase">Truy cập môn học</h2>
+        <p className="text-green-600 font-bold mb-8 text-xl italic">{subject}</p>
         
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Nhập mã bản quyền</label>
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="Ví dụ: TKHA-2026-VIP"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-            />
+        <div className="space-y-6">
+          <input 
+            type="password" 
+            value={key} 
+            onChange={(e) => { setKey(e.target.value); setError(''); }} 
+            placeholder="Nhập mã truy cập..." 
+            className="w-full px-6 py-5 rounded-2xl border-4 border-gray-50 focus:border-green-500 outline-none font-bold text-center text-xl shadow-inner transition-all" 
+          />
+          {error && <p className="text-red-500 text-sm font-bold animate-pulse">{error}</p>}
+          
+          <div className="flex gap-4">
+            <button 
+              onClick={onBack} 
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black py-5 rounded-2xl transition-all"
+            >
+              Quay lại
+            </button>
+            <button 
+              onClick={handleUnlock} 
+              className="flex-[2] bg-green-600 hover:bg-green-700 text-white font-black py-5 rounded-2xl shadow-xl transform active:scale-95 transition-all text-xl"
+            >
+              Mở khóa 🚀
+            </button>
           </div>
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          <button
-            onClick={handleUnlock}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg transform active:scale-95 transition"
-          >
-            Mở Khóa Hệ Thống 🔐
-          </button>
-        </div>
-        
-        <div className="mt-8 text-xs text-center text-gray-400">
-          © 2026 TKHA Educational Systems
         </div>
       </div>
     </div>
   );
 };
-
 export default LicenseGate;

@@ -1,7 +1,7 @@
 {
-  "name": "TKHA_2026 - Educational Mastery",
-  "description": "An advanced educational platform for high school students following the 2018 General Education Program, featuring AI-generated challenges and Southern Vietnamese feedback.",
   "requestFramePermissions": [
     "microphone"
-  ]
+  ],
+  "name": "TKHA_2026 - Educational Mastery",
+  "description": ""
 }

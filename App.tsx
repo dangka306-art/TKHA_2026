@@ -1,63 +1,68 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import LicenseGate from './components/LicenseGate';
 import { generateTopicData } from './services/geminiService';
-import { AppLevel, TopicData, UserStats } from './types';
+import { AppLevel, TopicData, UserStats, Subject } from './types';
 import { MCQView, TFView, ShortAnswerView } from './components/QuizViews';
 
+const SUBJECT_LIST: { name: Subject; icon: string; color: string }[] = [
+  { name: 'Toán học', icon: '📐', color: 'bg-blue-500' },
+  { name: 'Ngữ văn', icon: '✍️', color: 'bg-red-500' },
+  { name: 'Tiếng anh', icon: '🇬🇧', color: 'bg-indigo-500' },
+  { name: 'Vật lý', icon: '⚡', color: 'bg-yellow-500' },
+  { name: 'Hóa học', icon: '🧪', color: 'bg-emerald-500' },
+  { name: 'Sinh học', icon: '🧬', color: 'bg-green-500' },
+  { name: 'Lịch sử', icon: '📜', color: 'bg-orange-500' },
+  { name: 'Địa lý', icon: '🌍', color: 'bg-cyan-500' },
+  { name: 'Giáo dục kinh tế và pháp luật', icon: '⚖️', color: 'bg-slate-600' },
+  { name: 'Hoạt động trải nghiệm hướng nghiệp', icon: '🎭', color: 'bg-pink-500' },
+  { name: 'Tin học', icon: '💻', color: 'bg-gray-700' },
+];
+
 const App: React.FC = () => {
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [unlockedSubjects, setUnlockedSubjects] = useState<Subject[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [showGate, setShowGate] = useState(false);
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
   const [data, setData] = useState<TopicData | null>(null);
   const [currentLevel, setCurrentLevel] = useState<AppLevel | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [stats, setStats] = useState<UserStats>({ score: 0, totalItems: 0, completed: false });
-  
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const loadingMessages = [
-    "Đang phân tích cấu trúc 2018...",
-    "Đang lồng ghép tình huống thực tế...",
-    "Đang kiểm tra tính độc bản của câu hỏi...",
-    "Đang tối ưu hóa lời giải chi tiết...",
-    "Sắp xong rồi, đợi chút xíu nghen!"
-  ];
 
-  useEffect(() => {
-    let interval: any;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingStep(prev => (prev + 1) % loadingMessages.length);
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [loading]);
-
-  useEffect(() => {
-    const audio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3');
-    audio.loop = true;
-    audio.volume = 0.15;
-    audioRef.current = audio;
-    return () => audio.pause();
-  }, []);
-
-  const startMusic = () => {
-    if (audioRef.current) {
-      audioRef.current.play().catch(() => {});
+  const handleSubjectClick = (subject: Subject) => {
+    if (unlockedSubjects.includes(subject)) {
+      setSelectedSubject(subject);
+    } else {
+      setSelectedSubject(subject);
+      setShowGate(true);
     }
   };
 
+  const handleUnlockSubject = () => {
+    if (selectedSubject && !unlockedSubjects.includes(selectedSubject)) {
+      setUnlockedSubjects([...unlockedSubjects, selectedSubject]);
+    }
+    setShowGate(false);
+  };
+
   const handleGenerate = async () => {
-    if (!topic.trim()) return;
+    if (!selectedSubject || !topic.trim()) return;
     setLoading(true);
-    setLoadingStep(0);
+    setErrorMsg('');
+    setData(null);
+
     try {
-      const result = await generateTopicData(topic);
-      setData(result);
-      startMusic();
-    } catch (error) {
-      alert("Hệ thống đang bận soạn đề, vui lòng nhấn thử lại nha!");
+      const result = await generateTopicData(selectedSubject, topic);
+      if (result && result.sieuDe) {
+        setData(result);
+      } else {
+        throw new Error("Không thể khởi tạo tri thức. Hãy thử lại.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg(error.message || "Đã có lỗi xảy ra.");
     } finally {
       setLoading(false);
     }
@@ -66,63 +71,81 @@ const App: React.FC = () => {
   const startLevel = (level: AppLevel) => {
     setCurrentLevel(level);
     setCurrentIndex(0);
-    
     let total = 0;
     if (level === AppLevel.SIEU_DE) total = data?.sieuDe.length || 0;
     else if (level === AppLevel.THU_SUC) total = (data?.thuSuc.length || 0) * 4;
     else if (level === AppLevel.VE_DICH) total = data?.veDich.length || 0;
-
     setStats({ score: 0, totalItems: total, completed: false });
   };
 
-  const handleNext = (correctCount: number) => {
+  const handleNext = (correctCount: number = 0) => {
     setStats(prev => ({ ...prev, score: prev.score + correctCount }));
-    
-    const questionsLength = currentLevel === AppLevel.SIEU_DE ? data?.sieuDe.length 
-                        : currentLevel === AppLevel.THU_SUC ? data?.thuSuc.length 
-                        : data?.veDich.length;
+    const len = currentLevel === AppLevel.SIEU_DE ? data?.sieuDe.length 
+              : currentLevel === AppLevel.THU_SUC ? data?.thuSuc.length 
+              : data?.veDich.length;
 
-    if (currentIndex + 1 < (questionsLength || 0)) {
+    if (currentIndex + 1 < (len || 0)) {
       setCurrentIndex(prev => prev + 1);
     } else {
       setStats(prev => ({ ...prev, completed: true }));
     }
   };
 
-  if (!isUnlocked) return <LicenseGate onUnlock={() => setIsUnlocked(true)} />;
+  const isExcellent = stats.score === stats.totalItems && stats.totalItems > 0;
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-[#f0fdf4] p-6 flex flex-col items-center justify-center font-['Quicksand']">
-        <div className="max-w-3xl w-full bg-white p-12 rounded-[40px] shadow-2xl border-b-[12px] border-green-200 relative overflow-hidden">
+      <div className="min-h-screen bg-[#f0fdf4] p-6 flex flex-col items-center justify-center">
+        {showGate && selectedSubject && (
+          <LicenseGate subject={selectedSubject} onUnlock={handleUnlockSubject} onBack={() => { setShowGate(false); setSelectedSubject(null); }} />
+        )}
+        
+        <div className="max-w-4xl w-full bg-white p-12 rounded-[60px] shadow-2xl relative border-b-[20px] border-green-100">
           {loading && (
-            <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
-               <div className="w-24 h-24 border-8 border-green-100 border-t-green-500 rounded-full animate-spin mb-8"></div>
-               <p className="text-2xl font-black text-green-700 animate-pulse">{loadingMessages[loadingStep]}</p>
-               <p className="text-sm text-gray-400 mt-4 italic">Mỗi bộ đề đều được AI soạn thảo riêng biệt...</p>
+            <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center rounded-[60px] backdrop-blur-md">
+               <div className="w-24 h-24 border-8 border-green-100 border-t-green-600 rounded-full animate-spin mb-8 shadow-inner"></div>
+               <p className="text-3xl font-black text-green-700 animate-pulse text-center px-6 uppercase tracking-tighter">
+                  Đang khởi tạo tri thức độc bản...
+                  <span className="text-sm font-bold text-gray-400 tracking-widest mt-4 block">Ứng dụng đang vận hành mạnh mẽ nhất</span>
+               </p>
             </div>
           )}
-
-          <div className="relative z-10 text-center">
-            <h1 className="text-7xl font-black text-green-700 mb-2 tracking-tight">TKHA_2026</h1>
-            <p className="text-xl text-gray-500 font-bold mb-10 italic">"Kiến thức của bạn là duy nhất, đề thi cũng vậy" 🚀</p>
-            <div className="space-y-8">
-              <div className="group text-left">
-                <label className="block text-sm font-black text-green-600 mb-2 ml-4 uppercase tracking-widest">Gõ chủ đề bạn muốn rèn luyện:</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Sóng ánh sáng, Hình học không gian..."
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className="w-full px-8 py-6 rounded-3xl border-4 border-gray-100 focus:border-green-500 outline-none text-2xl transition-all shadow-inner bg-gray-50 font-bold"
-                />
+          
+          <div className="text-center">
+            <h1 className="text-8xl font-black text-green-700 mb-2 tracking-tighter">TKHA_2026</h1>
+            <p className="text-xl text-gray-400 font-bold mb-12 italic tracking-widest uppercase">Luyện thi Đánh giá năng lực chuẩn 2018</p>
+            
+            <div className="mb-12 text-left">
+              <label className="text-sm font-black text-green-600 ml-4 uppercase tracking-[0.3em] mb-6 block">I. CHỌN MÔN HỌC:</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-2 border-gray-50 rounded-[40px] bg-gray-50/30 shadow-inner">
+                {SUBJECT_LIST.map(s => {
+                  const isUnlocked = unlockedSubjects.includes(s.name);
+                  return (
+                    <button key={s.name} onClick={() => handleSubjectClick(s.name)}
+                      className={`p-6 rounded-3xl flex flex-col items-center gap-4 transition-all transform hover:scale-105 relative ${selectedSubject === s.name ? 'bg-green-600 text-white shadow-2xl scale-105' : 'bg-white text-gray-600 hover:bg-green-50 shadow-sm'} ${!isUnlocked && selectedSubject !== s.name ? 'opacity-80' : ''}`}>
+                      <span className="text-5xl">{s.icon}</span>
+                      <span className="text-[12px] font-black uppercase text-center leading-tight">{s.name}</span>
+                      {!isUnlocked && <span className="absolute top-2 right-2 text-xs">🔒</span>}
+                    </button>
+                  );
+                })}
               </div>
-              <button
-                onClick={handleGenerate}
-                disabled={loading}
-                className={`w-full py-7 rounded-3xl font-black text-2xl shadow-2xl transition-all transform active:scale-95 ${loading ? 'bg-gray-300' : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white shadow-green-200'}`}
-              >
-                {loading ? 'Đang sáng tạo đề thi...' : 'Soạn Đề Độc Bản ✨'}
+            </div>
+
+            <div className="text-left space-y-8">
+              <label className="text-sm font-black text-green-600 ml-4 uppercase tracking-[0.3em]">II. NHẬP CHỦ ĐỀ CẦN LUYỆN:</label>
+              <input type="text" placeholder="Ví dụ: Đạo hàm, Chí Phèo, Pháp luật lao động..." value={topic} onChange={(e) => { setTopic(e.target.value); setErrorMsg(''); }} 
+                className={`w-full p-10 rounded-[40px] border-4 focus:border-green-500 outline-none text-3xl font-bold bg-gray-50 shadow-inner transition-all ${errorMsg ? 'border-red-500 animate-shake' : 'border-gray-50'}`} />
+              
+              {errorMsg && (
+                <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-200 text-red-600 font-black text-center animate-bounce">
+                  ⚠️ {errorMsg}
+                </div>
+              )}
+
+              <button onClick={handleGenerate} disabled={!selectedSubject || !unlockedSubjects.includes(selectedSubject) || !topic.trim() || loading}
+                className="w-full py-10 bg-green-600 text-white font-black text-4xl rounded-[40px] shadow-2xl hover:bg-green-700 transition-all transform active:scale-95 disabled:bg-gray-200 disabled:cursor-not-allowed border-b-[10px] border-green-800">
+                {loading ? 'ĐANG PHÂN TÍCH...' : 'BẮT ĐẦU LUYỆN TẬP 🚀'}
               </button>
             </div>
           </div>
@@ -132,57 +155,50 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-10 font-['Quicksand']">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-[32px] shadow-xl mb-10 border-b-8 border-green-100">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-green-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg">📖</div>
-            <div>
-              <p className="text-xs font-black text-green-600 uppercase tracking-widest">Đang rèn luyện</p>
-              <h1 className="text-2xl font-black text-gray-800">{data.topic}</h1>
-            </div>
+    <div className="min-h-screen bg-[#f8fafc] p-6 font-medium">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white p-10 rounded-[50px] shadow-xl mb-12 flex flex-col md:flex-row justify-between items-center border-b-8 border-green-50 transition-all gap-6">
+          <div className="text-center md:text-left">
+            <span className="bg-green-100 text-green-700 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em]">{data.subject}</span>
+            <h1 className="text-3xl md:text-4xl font-black text-gray-800 tracking-tight mt-3 uppercase">📖 CHỦ ĐỀ: {data.topic}</h1>
           </div>
-          <button onClick={() => { setData(null); setCurrentLevel(null); }} className="mt-4 md:mt-0 px-8 py-3 bg-gray-100 text-gray-700 rounded-2xl font-black hover:bg-gray-200 transition-colors">🏠 Soạn đề mới</button>
+          <button onClick={() => { setData(null); setCurrentLevel(null); }} className="px-10 py-5 bg-gray-900 text-white rounded-3xl font-black hover:bg-black transition-all active:scale-95 shadow-xl whitespace-nowrap">ĐỔI CHỦ ĐỀ</button>
         </div>
 
         {!currentLevel ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in slide-in-from-bottom-10">
-            <LevelCard title="SIÊU DỄ" subtitle="12 câu MCQ" desc="Khởi động trí não với các khái niệm cơ bản." icon="🌱" color="green" onClick={() => startLevel(AppLevel.SIEU_DE)} />
-            <LevelCard title="THỬ SỨC" subtitle="4 câu Đúng/Sai" desc="Thử thách khả năng phân tích đa chiều." icon="🔥" color="orange" onClick={() => startLevel(AppLevel.THU_SUC)} />
-            <LevelCard title="VỀ ĐÍCH" subtitle="6 câu Tự luận" desc="Chinh phục bài tập vận dụng cao thực tế." icon="🏆" color="blue" onClick={() => startLevel(AppLevel.VE_DICH)} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <LevelCard title="SIÊU DỄ" icon="🌱" color="green" desc="12 câu trắc nghiệm MCQ chuyên sâu" onClick={() => startLevel(AppLevel.SIEU_DE)} />
+            <LevelCard title="THỬ SỨC" icon="🔥" color="orange" desc="4 câu Đúng/Sai tư duy logic" onClick={() => startLevel(AppLevel.THU_SUC)} />
+            <LevelCard title="VỀ ĐÍCH" icon="🏆" color="blue" desc="6 câu trả lời ngắn vận dụng cao" onClick={() => startLevel(AppLevel.VE_DICH)} />
           </div>
         ) : (
-          <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-2xl border-l-[12px] border-green-500 min-h-[600px] flex flex-col relative overflow-hidden">
+          <div className="bg-white p-12 rounded-[60px] shadow-2xl border-l-[30px] border-green-600 relative overflow-hidden transition-all">
              {!stats.completed ? (
-              <>
-                <div className="flex justify-between items-center mb-10 pb-6 border-b-2 border-gray-50">
-                  <div className="flex flex-col">
-                    <h2 className={`text-2xl font-black ${currentLevel === AppLevel.SIEU_DE ? 'text-green-600' : currentLevel === AppLevel.THU_SUC ? 'text-orange-600' : 'text-blue-600'}`}>{currentLevel}</h2>
-                    <p className="text-sm font-bold text-gray-400">Câu {currentIndex + 1} / {currentLevel === AppLevel.SIEU_DE ? data.sieuDe.length : currentLevel === AppLevel.THU_SUC ? data.thuSuc.length : data.veDich.length}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-black text-gray-400 uppercase">Điểm đạt được</p>
-                    <div className="text-4xl font-black text-green-600">{stats.score}</div>
+              <div className="animate-in fade-in slide-in-from-right duration-500">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-12 pb-8 border-b-2 border-gray-50 gap-4">
+                  <h2 className="text-4xl md:text-5xl font-black text-green-700 uppercase tracking-tighter text-center md:text-left">{currentLevel.replace('_', ' ')}</h2>
+                  <div className="text-right bg-green-50 px-10 py-6 rounded-[35px] border-2 border-green-100 shadow-sm">
+                    <p className="text-xs font-black text-green-400 uppercase tracking-widest mb-1">Điểm Tích Lũy</p>
+                    <div className="text-5xl md:text-6xl font-black text-green-700">{stats.score}</div>
                   </div>
                 </div>
-                <div className="flex-1">
-                  {currentLevel === AppLevel.SIEU_DE && <MCQView key={currentIndex} question={data.sieuDe[currentIndex]} onNext={handleNext} />}
-                  {currentLevel === AppLevel.THU_SUC && <TFView key={currentIndex} question={data.thuSuc[currentIndex]} onNext={handleNext} />}
-                  {currentLevel === AppLevel.VE_DICH && <ShortAnswerView key={currentIndex} question={data.veDich[currentIndex]} onNext={handleNext} />}
-                </div>
-              </>
+                {currentLevel === AppLevel.SIEU_DE && data.sieuDe[currentIndex] && <MCQView key={currentIndex} question={data.sieuDe[currentIndex]} onNext={handleNext} />}
+                {currentLevel === AppLevel.THU_SUC && data.thuSuc[currentIndex] && <TFView key={currentIndex} question={data.thuSuc[currentIndex]} onNext={handleNext} />}
+                {currentLevel === AppLevel.VE_DICH && data.veDich[currentIndex] && <ShortAnswerView key={currentIndex} question={data.veDich[currentIndex]} onNext={handleNext} />}
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center animate-in zoom-in">
-                <div className="text-9xl mb-8">🎖️</div>
-                <h2 className="text-5xl font-black text-gray-800 mb-4 tracking-tighter">BẢN LĨNH TKHA!</h2>
-                <div className="bg-green-50 p-12 rounded-[40px] w-full max-w-md mb-12 border-4 border-white shadow-xl">
-                  <div className="text-8xl font-black text-green-700">{stats.score}<span className="text-3xl text-green-400">/{stats.totalItems}</span></div>
-                  <div className="text-lg font-black text-green-600 mt-4 uppercase tracking-widest">Đạt tỉ lệ {Math.round((stats.score / stats.totalItems) * 100)}%</div>
+              <div className="flex flex-col items-center py-24 text-center animate-in zoom-in duration-700">
+                <div className="text-[120px] md:text-[150px] mb-12 animate-bounce">{isExcellent ? '👑' : '📚'}</div>
+                <h2 className="text-5xl md:text-8xl font-black text-gray-800 mb-8 tracking-tighter">
+                  {isExcellent ? 'XUẤT SẮC TUYỆT ĐỐI!' : 'KẾT QUẢ LUYỆN TẬP!'}
+                </h2>
+                <div className={`p-12 md:p-20 rounded-[80px] border-[12px] border-white shadow-2xl mb-20 relative ${isExcellent ? 'bg-green-50' : 'bg-orange-50'}`}>
+                  <div className={`text-[120px] md:text-[180px] leading-none font-black ${isExcellent ? 'text-green-700' : 'text-orange-700'}`}>{stats.score}<span className="text-3xl md:text-5xl text-gray-400 font-bold ml-4">/{stats.totalItems}</span></div>
+                  <p className={`text-xl md:text-3xl font-black uppercase tracking-[0.3em] mt-10 ${isExcellent ? 'text-green-600' : 'text-orange-600'}`}>
+                    {isExcellent ? 'CHÚC MỪNG BẠN ĐÃ CHINH PHỤC TOÀN BỘ!' : 'HÃY CỐ GẮNG HƠN ĐỂ ĐẠT ĐIỂM TUYỆT ĐỐI.'}
+                  </p>
                 </div>
-                <div className="flex gap-4">
-                   <button onClick={() => setCurrentLevel(null)} className="px-12 py-5 bg-green-600 text-white font-black rounded-3xl shadow-xl hover:bg-green-700 transition-all">Quay Lại Menu 🏠</button>
-                   <button onClick={() => { setData(null); setCurrentLevel(null); }} className="px-12 py-5 bg-blue-600 text-white font-black rounded-3xl shadow-xl hover:bg-blue-700 transition-all">Soạn Đề Khác ⚡</button>
-                </div>
+                <button onClick={() => setCurrentLevel(null)} className="px-16 md:px-24 py-8 md:py-10 bg-gray-900 text-white font-black rounded-[40px] shadow-2xl hover:bg-black text-2xl md:text-4xl transform active:scale-95 transition-all">TRỞ VỀ MENU 🏠</button>
               </div>
             )}
           </div>
@@ -192,16 +208,14 @@ const App: React.FC = () => {
   );
 };
 
-const LevelCard: React.FC<{ title: string; subtitle: string; desc: string; icon: string; color: string; onClick: () => void }> = ({ title, subtitle, desc, icon, color, onClick }) => {
-  const colors: any = { green: 'border-green-500 text-green-700 bg-green-50', orange: 'border-orange-500 text-orange-700 bg-orange-50', blue: 'border-blue-600 text-blue-800 bg-blue-50' };
-  const btnColors: any = { green: 'bg-green-600 hover:bg-green-700', orange: 'bg-orange-600 hover:bg-orange-700', blue: 'bg-blue-600 hover:bg-blue-700' };
+const LevelCard: React.FC<{ title: string; icon: string; color: string; desc: string; onClick: () => void }> = ({ title, icon, color, desc, onClick }) => {
+  const colorMap: any = { green: 'border-green-500 text-green-700', orange: 'border-orange-500 text-orange-700', blue: 'border-blue-600 text-blue-800' };
   return (
-    <div onClick={onClick} className={`bg-white p-10 rounded-[40px] shadow-2xl border-t-[12px] transition-all cursor-pointer group hover:-translate-y-2 flex flex-col items-center text-center ${colors[color]}`}>
-      <div className="text-7xl mb-6 group-hover:scale-110 transition-transform">{icon}</div>
-      <h3 className="text-3xl font-black mb-1">{title}</h3>
-      <p className="text-sm font-black opacity-40 mb-4 tracking-tighter uppercase">{subtitle}</p>
-      <p className="text-gray-500 font-bold mb-8 flex-1">{desc}</p>
-      <button className={`w-full text-white py-4 rounded-2xl font-black shadow-lg transition-colors ${btnColors[color]}`}>Bắt Đầu ⚡</button>
+    <div onClick={onClick} className={`bg-white p-12 rounded-[60px] shadow-2xl border-t-[15px] transition-all cursor-pointer transform hover:-translate-y-6 flex flex-col items-center text-center group ${colorMap[color]}`}>
+      <div className="text-8xl md:text-9xl mb-8 group-hover:scale-110 transition-transform">{icon}</div>
+      <h3 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-tighter">{title.replace('_', ' ')}</h3>
+      <p className="text-gray-400 font-bold mb-10 italic text-lg leading-snug h-20">{desc}</p>
+      <button className="w-full bg-gray-900 text-white py-6 rounded-3xl font-black text-lg uppercase tracking-[0.2em] shadow-lg group-hover:bg-black">VÀO HỌC</button>
     </div>
   );
 };

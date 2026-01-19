@@ -1,112 +1,109 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { TopicData } from "../types";
+import { TopicData, Subject } from "../types";
 
-export const generateTopicData = async (topic: string): Promise<TopicData> => {
+export const generateTopicData = async (subject: Subject, topic: string): Promise<TopicData> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key missing");
 
   const ai = new GoogleGenAI({ apiKey });
   
-  const randomEntropy = Math.random().toString(36).substring(7);
-  const timestamp = new Date().toISOString();
-
+  // Tăng cường chỉ thị về tính đa dạng và số lượng chính xác
   const prompt = `
-    Bạn là một chuyên gia toán học và thiết kế đề thi THPT Quốc gia theo chương trình 2018. 
-    Hãy soạn bộ câu hỏi cho chủ đề: "${topic}". Phiên bản: ${randomEntropy}.
-
-    QUY TẮC TOÁN HỌC (PROM TOAN):
-    1. Sử dụng LaTeX chuẩn cho TẤT CẢ công thức: $\cdot$ (phải có \), $\frac{a}{b}$, $a^{n}$, $\sqrt{x}$.
-    2. CÁC LỆNH LATEX PHẢI CÓ DẤU GẠCH CHÉO NGƯỢC (\).
-
-    QUY TẮC "CLEAN TEXT" (CỰC KỲ QUAN TRỌNG):
-    1. TUYỆT ĐỐI KHÔNG được chèn đáp án (Đúng/Sai), từ khóa "Đáp án là...", hoặc bất kỳ lời giải thích nào vào các trường: 'question', 'context', 'statement'.
-    2. Trường 'statement' (trong phần Đúng/Sai) chỉ được chứa một mệnh đề khẳng định duy nhất để người học đánh giá. Không kèm theo dấu hỏi hay giải thích bên trong.
-    3. Mọi lời giải, lập luận và đáp án chi tiết BẮT BUỘC phải nằm riêng trong trường 'explanation'.
-    4. KHÔNG sử dụng các định dạng như "(Đúng/Sai?)" hoặc "- Đáp án: ..." trong nội dung câu hỏi.
-
-    CẤU TRÚC ĐỀ THI:
-    - 12 câu MCQ (Sơ đẳng).
-    - 4 câu Đúng/Sai (Mỗi câu gồm 1 context và 4 sub-statements độc lập).
-    - 6 câu Điền số (Vận dụng cao).
-
-    JSON phải đúng cấu trúc schema và KHÔNG được rò rỉ đáp án vào nội dung văn bản câu hỏi.
+    Bạn là một chuyên gia khảo thí hàng đầu. Hãy tạo một bộ đề luyện tập ĐỘC BẢN cho chủ đề: "${topic}" môn ${subject}.
+    
+    YÊU CẦU SỐ LƯỢNG CHÍNH XÁC:
+    1. sieuDe: 12 câu hỏi trắc nghiệm 4 lựa chọn (MCQ) - Mức độ Nhận biết/Thông hiểu.
+    2. thuSuc: 4 câu hỏi Đúng/Sai (mỗi câu gồm ngữ liệu context và 4 ý statement a, b, c, d) - Mức độ Thông hiểu/Vận dụng.
+    3. veDich: 6 câu hỏi trả lời ngắn (điền đáp án ngắn gọn) - Mức độ Vận dụng cao.
+    
+    NGUYÊN TẮC "ĐỘC BẢN & ĐA DẠNG":
+    - Tuyệt đối không lặp lại các câu hỏi phổ thông có sẵn trên mạng.
+    - Mỗi câu hỏi phải khai thác một khía cạnh khác nhau của chủ đề.
+    - Đảm bảo tính khoa học, chính xác 100%.
+    - Sử dụng LaTeX $...$ cho mọi biểu thức toán học, công thức hóa học hoặc ký hiệu vật lý.
+    - Lời giải (explanation) cần súc tích, tập trung vào phương pháp tư duy.
   `;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: prompt,
-    config: {
-      temperature: 1.0,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          topic: { type: Type.STRING },
-          sieuDe: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.NUMBER },
-                question: { type: Type.STRING },
-                options: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      id: { type: Type.STRING },
-                      text: { type: Type.STRING }
-                    }
-                  }
-                },
-                correctAnswer: { type: Type.STRING },
-                explanation: { type: Type.STRING }
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview', 
+      contents: prompt,
+      config: {
+        temperature: 0.8, // Tăng temperature để tạo sự đa dạng, sáng tạo trong câu hỏi
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            topic: { type: Type.STRING },
+            subject: { type: Type.STRING },
+            sieuDe: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.NUMBER },
+                  question: { type: Type.STRING },
+                  options: { 
+                    type: Type.ARRAY, 
+                    items: { 
+                      type: Type.OBJECT, 
+                      properties: { id: { type: Type.STRING }, text: { type: Type.STRING } } 
+                    } 
+                  },
+                  correctAnswer: { type: Type.STRING },
+                  explanation: { type: Type.STRING }
+                }
               },
-              required: ["id", "question", "options", "correctAnswer", "explanation"]
+              minItems: 12,
+              maxItems: 12
+            },
+            thuSuc: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.NUMBER },
+                  context: { type: Type.STRING },
+                  subQuestions: { 
+                    type: Type.ARRAY, 
+                    items: { 
+                      type: Type.OBJECT, 
+                      properties: { id: { type: Type.NUMBER }, statement: { type: Type.STRING }, correctAnswer: { type: Type.BOOLEAN } } 
+                    },
+                    minItems: 4,
+                    maxItems: 4
+                  },
+                  explanation: { type: Type.STRING }
+                }
+              },
+              minItems: 4,
+              maxItems: 4
+            },
+            veDich: {
+              type: Type.ARRAY,
+              items: { 
+                type: Type.OBJECT, 
+                properties: { 
+                  id: { type: Type.NUMBER }, 
+                  question: { type: Type.STRING }, 
+                  correctAnswer: { type: Type.STRING }, 
+                  explanation: { type: Type.STRING } 
+                } 
+              },
+              minItems: 6,
+              maxItems: 6
             }
           },
-          thuSuc: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.NUMBER },
-                context: { type: Type.STRING },
-                subQuestions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      id: { type: Type.NUMBER },
-                      statement: { type: Type.STRING },
-                      correctAnswer: { type: Type.BOOLEAN }
-                    }
-                  }
-                },
-                explanation: { type: Type.STRING }
-              },
-              required: ["id", "context", "subQuestions", "explanation"]
-            }
-          },
-          veDich: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.NUMBER },
-                question: { type: Type.STRING },
-                correctAnswer: { type: Type.STRING },
-                explanation: { type: Type.STRING }
-              },
-              required: ["id", "question", "correctAnswer", "explanation"]
-            }
-          }
-        },
-        required: ["topic", "sieuDe", "thuSuc", "veDich"]
+          required: ["topic", "sieuDe", "thuSuc", "veDich"]
+        }
       }
-    }
-  });
+    });
 
-  return JSON.parse(response.text);
+    const result = JSON.parse(response.text);
+    return result;
+  } catch (err) {
+    console.error("Gemini Error:", err);
+    throw new Error("Không thể khởi tạo bộ đề đa dạng ngay lúc này. Hãy thử lại sau vài giây.");
+  }
 };

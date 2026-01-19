@@ -30,16 +30,22 @@ const decodeAudioData = async (
   return buffer;
 };
 
-export const playFeedback = async (isCorrect: boolean) => {
+let globalAudioCtx: AudioContext | null = null;
+let currentSource: AudioBufferSourceNode | null = null;
+let lastSpokenText: string = "";
+
+const getAudioContext = () => {
+  if (!globalAudioCtx) {
+    globalAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+  }
+  return globalAudioCtx;
+};
+
+const playAudio = async (prompt: string) => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) return;
 
   const ai = new GoogleGenAI({ apiKey });
-  
-  // Mien Tay Vietnamese dialect phrases
-  const prompt = isCorrect 
-    ? "Nói bằng giọng nữ miền tây, chất phác: 'Đúng rồi nè, giỏi quá xá luôn cưng ơi!'" 
-    : "Nói bằng giọng nữ miền tây, chất phác: 'Sai mất tiêu rồi nè, không sao đâu, ráng lên chút xíu nữa nghen!'";
 
   try {
     const response = await ai.models.generateContent({
@@ -49,7 +55,7 @@ export const playFeedback = async (isCorrect: boolean) => {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' }, // Closest available female voice profile
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
           },
         },
       },
@@ -57,18 +63,35 @@ export const playFeedback = async (isCorrect: boolean) => {
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (base64Audio) {
-      const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContext, 24000, 1);
-      const source = outputAudioContext.createBufferSource();
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') await ctx.resume();
+      
+      if (currentSource) {
+        try { currentSource.stop(); } catch(e) {}
+      }
+
+      const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
+      const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(outputAudioContext.destination);
+      source.connect(ctx.destination);
       source.start();
+      currentSource = source;
     }
   } catch (error) {
     console.error("TTS Error:", error);
-    // Fallback to browser TTS if Gemini fails
-    const utter = new SpeechSynthesisUtterance(isCorrect ? "Đúng rồi, giỏi quá!" : "Tiếc quá, sai rồi!");
-    utter.lang = 'vi-VN';
-    window.speechSynthesis.speak(utter);
   }
+};
+
+export const speakQuestion = async (text: string) => {
+  const cleanText = text.replace(/\$/g, "").replace(/\\/g, "").substring(0, 350);
+  if (cleanText === lastSpokenText) return;
+  
+  lastSpokenText = cleanText;
+  const prompt = `Bạn là nữ MC Miền Tây. Hãy đọc diễn cảm nội dung sau, giọng truyền cảm: "${cleanText}"`;
+  await playAudio(prompt);
+};
+
+export const playFeedback = async (isCorrect: boolean) => {
+  // MC không đọc phản hồi nhận xét khi đã chọn đáp án
+  return; 
 };

@@ -5,6 +5,11 @@ export enum AppLevel {
   VE_DICH = 'VE_DICH'
 }
 
+export type Subject = 
+  | 'Toán học' | 'Ngữ văn' | 'Vật lý' | 'Hóa học' | 'Sinh học' 
+  | 'Tiếng anh' | 'Địa lý' | 'Lịch sử' | 'Giáo dục kinh tế và pháp luật' 
+  | 'Hoạt động trải nghiệm hướng nghiệp' | 'Tin học';
+
 export interface Option {
   id: string;
   text: string;
@@ -28,7 +33,7 @@ export interface TFQuestion {
   id: number;
   context: string;
   subQuestions: TFSubQuestion[];
-  explanation: string; // Giải thích chung cho cả 4 ý hoặc từng ý
+  explanation: string;
 }
 
 export interface ShortAnswerQuestion {
@@ -40,6 +45,7 @@ export interface ShortAnswerQuestion {
 
 export interface TopicData {
   topic: string;
+  subject: Subject;
   sieuDe: MCQQuestion[];
   thuSuc: TFQuestion[];
   veDich: ShortAnswerQuestion[];
@@ -47,6 +53,6 @@ export interface TopicData {
 
 export interface UserStats {
   score: number;
-  totalItems: number; // Tổng số mục (câu trắc nghiệm hoặc số ý đúng/sai)
+  totalItems: number;
   completed: boolean;
 }
