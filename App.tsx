@@ -40,8 +40,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUnlockSubject = () => {
-    if (selectedSubject && !unlockedSubjects.includes(selectedSubject)) {
+  const handleUnlockSubject = (isVip: boolean) => {
+    if (isVip) {
+      // Unlock all subjects at once
+      setUnlockedSubjects(SUBJECT_LIST.map(s => s.name));
+    } else if (selectedSubject && !unlockedSubjects.includes(selectedSubject)) {
       setUnlockedSubjects([...unlockedSubjects, selectedSubject]);
     }
     setShowGate(false);
@@ -97,35 +100,39 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#f0fdf4] p-6 flex flex-col items-center justify-center">
         {showGate && selectedSubject && (
-          <LicenseGate subject={selectedSubject} onUnlock={handleUnlockSubject} onBack={() => { setShowGate(false); setSelectedSubject(null); }} />
+          <LicenseGate 
+            subject={selectedSubject} 
+            onUnlock={handleUnlockSubject} 
+            onBack={() => { setShowGate(false); setSelectedSubject(null); }} 
+          />
         )}
         
-        <div className="max-w-4xl w-full bg-white p-12 rounded-[60px] shadow-2xl relative border-b-[20px] border-green-100">
+        <div className="max-w-4xl w-full bg-white p-12 rounded-[60px] shadow-2xl relative border-b-[20px] border-emerald-100">
           {loading && (
             <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center rounded-[60px] backdrop-blur-md">
-               <div className="w-24 h-24 border-8 border-green-100 border-t-green-600 rounded-full animate-spin mb-8 shadow-inner"></div>
-               <p className="text-3xl font-black text-green-700 animate-pulse text-center px-6 uppercase tracking-tighter">
+               <div className="w-24 h-24 border-8 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-8 shadow-inner"></div>
+               <p className="text-3xl font-black text-emerald-700 animate-pulse text-center px-6 uppercase tracking-tighter">
                   Đang khởi tạo tri thức độc bản...
-                  <span className="text-sm font-bold text-gray-400 tracking-widest mt-4 block">Ứng dụng đang vận hành mạnh mẽ nhất</span>
+                  <span className="text-sm font-bold text-slate-400 tracking-widest mt-4 block">Hệ thống đang nạp dữ liệu chuyên sâu</span>
                </p>
             </div>
           )}
           
           <div className="text-center">
-            <h1 className="text-8xl font-black text-green-700 mb-2 tracking-tighter">TKHA_2026</h1>
-            <p className="text-xl text-gray-400 font-bold mb-12 italic tracking-widest uppercase">Luyện thi Đánh giá năng lực chuẩn 2018</p>
+            <h1 className="text-8xl font-black text-emerald-700 mb-2 tracking-tighter">TKHA_2026</h1>
+            <p className="text-xl text-slate-400 font-bold mb-12 italic tracking-widest uppercase">Hệ thống luyện thi ĐGNL 2018 - Premium</p>
             
             <div className="mb-12 text-left">
-              <label className="text-sm font-black text-green-600 ml-4 uppercase tracking-[0.3em] mb-6 block">I. CHỌN MÔN HỌC:</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-2 border-gray-50 rounded-[40px] bg-gray-50/30 shadow-inner">
+              <label className="text-sm font-black text-emerald-600 ml-4 uppercase tracking-[0.3em] mb-6 block">I. CHỌN MÔN HỌC:</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-2 border-slate-50 rounded-[40px] bg-slate-50/30 shadow-inner">
                 {SUBJECT_LIST.map(s => {
                   const isUnlocked = unlockedSubjects.includes(s.name);
                   return (
                     <button key={s.name} onClick={() => handleSubjectClick(s.name)}
-                      className={`p-6 rounded-3xl flex flex-col items-center gap-4 transition-all transform hover:scale-105 relative ${selectedSubject === s.name ? 'bg-green-600 text-white shadow-2xl scale-105' : 'bg-white text-gray-600 hover:bg-green-50 shadow-sm'} ${!isUnlocked && selectedSubject !== s.name ? 'opacity-80' : ''}`}>
+                      className={`p-6 rounded-3xl flex flex-col items-center gap-4 transition-all transform hover:scale-105 relative ${selectedSubject === s.name ? 'bg-emerald-600 text-white shadow-2xl scale-105' : 'bg-white text-slate-600 hover:bg-emerald-50 shadow-sm'} ${!isUnlocked && selectedSubject !== s.name ? 'opacity-80' : ''}`}>
                       <span className="text-5xl">{s.icon}</span>
-                      <span className="text-[12px] font-black uppercase text-center leading-tight">{s.name}</span>
-                      {!isUnlocked && <span className="absolute top-2 right-2 text-xs">🔒</span>}
+                      <span className="text-[11px] font-black uppercase text-center leading-tight">{s.name}</span>
+                      {!isUnlocked && <span className="absolute top-2 right-2 text-xs bg-slate-100 p-1 rounded-full border border-slate-200 shadow-sm">🔒</span>}
                     </button>
                   );
                 })}
@@ -133,9 +140,9 @@ const App: React.FC = () => {
             </div>
 
             <div className="text-left space-y-8">
-              <label className="text-sm font-black text-green-600 ml-4 uppercase tracking-[0.3em]">II. NHẬP CHỦ ĐỀ CẦN LUYỆN:</label>
+              <label className="text-sm font-black text-emerald-600 ml-4 uppercase tracking-[0.3em]">II. NHẬP CHỦ ĐỀ CẦN LUYỆN:</label>
               <input type="text" placeholder="Ví dụ: Đạo hàm, Chí Phèo, Pháp luật lao động..." value={topic} onChange={(e) => { setTopic(e.target.value); setErrorMsg(''); }} 
-                className={`w-full p-10 rounded-[40px] border-4 focus:border-green-500 outline-none text-3xl font-bold bg-gray-50 shadow-inner transition-all ${errorMsg ? 'border-red-500 animate-shake' : 'border-gray-50'}`} />
+                className={`w-full p-10 rounded-[40px] border-4 focus:border-emerald-500 outline-none text-3xl font-bold bg-slate-50 shadow-inner transition-all ${errorMsg ? 'border-red-500 animate-shake' : 'border-slate-50'}`} />
               
               {errorMsg && (
                 <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-200 text-red-600 font-black text-center animate-bounce">
@@ -144,7 +151,8 @@ const App: React.FC = () => {
               )}
 
               <button onClick={handleGenerate} disabled={!selectedSubject || !unlockedSubjects.includes(selectedSubject) || !topic.trim() || loading}
-                className="w-full py-10 bg-green-600 text-white font-black text-4xl rounded-[40px] shadow-2xl hover:bg-green-700 transition-all transform active:scale-95 disabled:bg-gray-200 disabled:cursor-not-allowed border-b-[10px] border-green-800">
+                className="w-full py-10 bg-emerald-600 text-white font-black text-4xl rounded-[40px] shadow-2xl hover:bg-emerald-700 transition-all transform active:scale-95 disabled:bg-slate-200 disabled:cursor-not-allowed border-b-[10px] border-emerald-800 uppercase tracking-tighter"
+              >
                 {loading ? 'ĐANG PHÂN TÍCH...' : 'BẮT ĐẦU LUYỆN TẬP 🚀'}
               </button>
             </div>
@@ -157,12 +165,12 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6 font-medium">
       <div className="max-w-6xl mx-auto">
-        <div className="bg-white p-10 rounded-[50px] shadow-xl mb-12 flex flex-col md:flex-row justify-between items-center border-b-8 border-green-50 transition-all gap-6">
+        <div className="bg-white p-10 rounded-[50px] shadow-xl mb-12 flex flex-col md:flex-row justify-between items-center border-b-8 border-emerald-50 transition-all gap-6">
           <div className="text-center md:text-left">
-            <span className="bg-green-100 text-green-700 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em]">{data.subject}</span>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-800 tracking-tight mt-3 uppercase">📖 CHỦ ĐỀ: {data.topic}</h1>
+            <span className="bg-emerald-100 text-emerald-700 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em]">{data.subject}</span>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight mt-3 uppercase">📖 CHỦ ĐỀ: {data.topic}</h1>
           </div>
-          <button onClick={() => { setData(null); setCurrentLevel(null); }} className="px-10 py-5 bg-gray-900 text-white rounded-3xl font-black hover:bg-black transition-all active:scale-95 shadow-xl whitespace-nowrap">ĐỔI CHỦ ĐỀ</button>
+          <button onClick={() => { setData(null); setCurrentLevel(null); }} className="px-10 py-5 bg-slate-900 text-white rounded-3xl font-black hover:bg-black transition-all active:scale-95 shadow-xl whitespace-nowrap">ĐỔI CHỦ ĐỀ</button>
         </div>
 
         {!currentLevel ? (
@@ -172,14 +180,14 @@ const App: React.FC = () => {
             <LevelCard title="VỀ ĐÍCH" icon="🏆" color="blue" desc="6 câu trả lời ngắn vận dụng cao" onClick={() => startLevel(AppLevel.VE_DICH)} />
           </div>
         ) : (
-          <div className="bg-white p-12 rounded-[60px] shadow-2xl border-l-[30px] border-green-600 relative overflow-hidden transition-all">
+          <div className="bg-white p-12 rounded-[60px] shadow-2xl border-l-[30px] border-emerald-600 relative overflow-hidden transition-all">
              {!stats.completed ? (
               <div className="animate-in fade-in slide-in-from-right duration-500">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-12 pb-8 border-b-2 border-gray-50 gap-4">
-                  <h2 className="text-4xl md:text-5xl font-black text-green-700 uppercase tracking-tighter text-center md:text-left">{currentLevel.replace('_', ' ')}</h2>
-                  <div className="text-right bg-green-50 px-10 py-6 rounded-[35px] border-2 border-green-100 shadow-sm">
-                    <p className="text-xs font-black text-green-400 uppercase tracking-widest mb-1">Điểm Tích Lũy</p>
-                    <div className="text-5xl md:text-6xl font-black text-green-700">{stats.score}</div>
+                <div className="flex flex-col md:flex-row justify-between items-center mb-12 pb-8 border-b-2 border-slate-50 gap-4">
+                  <h2 className="text-4xl md:text-5xl font-black text-emerald-700 uppercase tracking-tighter text-center md:text-left">{currentLevel.replace('_', ' ')}</h2>
+                  <div className="text-right bg-emerald-50 px-10 py-6 rounded-[35px] border-2 border-emerald-100 shadow-sm">
+                    <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Điểm Tích Lũy</p>
+                    <div className="text-5xl md:text-6xl font-black text-emerald-700">{stats.score}</div>
                   </div>
                 </div>
                 {currentLevel === AppLevel.SIEU_DE && data.sieuDe[currentIndex] && <MCQView key={currentIndex} question={data.sieuDe[currentIndex]} onNext={handleNext} />}
@@ -189,16 +197,16 @@ const App: React.FC = () => {
             ) : (
               <div className="flex flex-col items-center py-24 text-center animate-in zoom-in duration-700">
                 <div className="text-[120px] md:text-[150px] mb-12 animate-bounce">{isExcellent ? '👑' : '📚'}</div>
-                <h2 className="text-5xl md:text-8xl font-black text-gray-800 mb-8 tracking-tighter">
+                <h2 className="text-5xl md:text-8xl font-black text-slate-800 mb-8 tracking-tighter">
                   {isExcellent ? 'XUẤT SẮC TUYỆT ĐỐI!' : 'KẾT QUẢ LUYỆN TẬP!'}
                 </h2>
-                <div className={`p-12 md:p-20 rounded-[80px] border-[12px] border-white shadow-2xl mb-20 relative ${isExcellent ? 'bg-green-50' : 'bg-orange-50'}`}>
-                  <div className={`text-[120px] md:text-[180px] leading-none font-black ${isExcellent ? 'text-green-700' : 'text-orange-700'}`}>{stats.score}<span className="text-3xl md:text-5xl text-gray-400 font-bold ml-4">/{stats.totalItems}</span></div>
-                  <p className={`text-xl md:text-3xl font-black uppercase tracking-[0.3em] mt-10 ${isExcellent ? 'text-green-600' : 'text-orange-600'}`}>
+                <div className={`p-12 md:p-20 rounded-[80px] border-[12px] border-white shadow-2xl mb-20 relative ${isExcellent ? 'bg-emerald-50' : 'bg-orange-50'}`}>
+                  <div className={`text-[120px] md:text-[180px] leading-none font-black ${isExcellent ? 'text-emerald-700' : 'text-orange-700'}`}>{stats.score}<span className="text-3xl md:text-5xl text-slate-400 font-bold ml-4">/{stats.totalItems}</span></div>
+                  <p className={`text-xl md:text-3xl font-black uppercase tracking-[0.3em] mt-10 ${isExcellent ? 'text-emerald-600' : 'text-orange-600'}`}>
                     {isExcellent ? 'CHÚC MỪNG BẠN ĐÃ CHINH PHỤC TOÀN BỘ!' : 'HÃY CỐ GẮNG HƠN ĐỂ ĐẠT ĐIỂM TUYỆT ĐỐI.'}
                   </p>
                 </div>
-                <button onClick={() => setCurrentLevel(null)} className="px-16 md:px-24 py-8 md:py-10 bg-gray-900 text-white font-black rounded-[40px] shadow-2xl hover:bg-black text-2xl md:text-4xl transform active:scale-95 transition-all">TRỞ VỀ MENU 🏠</button>
+                <button onClick={() => setCurrentLevel(null)} className="px-16 md:px-24 py-8 md:py-10 bg-slate-900 text-white font-black rounded-[40px] shadow-2xl hover:bg-black text-2xl md:text-4xl transform active:scale-95 transition-all">TRỞ VỀ MENU 🏠</button>
               </div>
             )}
           </div>
@@ -209,13 +217,13 @@ const App: React.FC = () => {
 };
 
 const LevelCard: React.FC<{ title: string; icon: string; color: string; desc: string; onClick: () => void }> = ({ title, icon, color, desc, onClick }) => {
-  const colorMap: any = { green: 'border-green-500 text-green-700', orange: 'border-orange-500 text-orange-700', blue: 'border-blue-600 text-blue-800' };
+  const colorMap: any = { green: 'border-emerald-500 text-emerald-700', orange: 'border-orange-500 text-orange-700', blue: 'border-blue-600 text-blue-800' };
   return (
     <div onClick={onClick} className={`bg-white p-12 rounded-[60px] shadow-2xl border-t-[15px] transition-all cursor-pointer transform hover:-translate-y-6 flex flex-col items-center text-center group ${colorMap[color]}`}>
       <div className="text-8xl md:text-9xl mb-8 group-hover:scale-110 transition-transform">{icon}</div>
       <h3 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-tighter">{title.replace('_', ' ')}</h3>
-      <p className="text-gray-400 font-bold mb-10 italic text-lg leading-snug h-20">{desc}</p>
-      <button className="w-full bg-gray-900 text-white py-6 rounded-3xl font-black text-lg uppercase tracking-[0.2em] shadow-lg group-hover:bg-black">VÀO HỌC</button>
+      <p className="text-slate-400 font-bold mb-10 italic text-lg leading-snug h-20">{desc}</p>
+      <button className="w-full bg-slate-900 text-white py-6 rounded-3xl font-black text-lg uppercase tracking-[0.2em] shadow-lg group-hover:bg-black">VÀO HỌC</button>
     </div>
   );
 };

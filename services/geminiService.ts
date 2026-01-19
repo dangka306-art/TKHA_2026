@@ -3,10 +3,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { TopicData, Subject } from "../types";
 
 export const generateTopicData = async (subject: Subject, topic: string): Promise<TopicData> => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key missing");
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   
   // Tăng cường chỉ thị về tính đa dạng và số lượng chính xác
   const prompt = `
